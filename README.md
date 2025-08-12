@@ -40,6 +40,12 @@ curl -X 'GET' \
 ./scripts/deploy-infrastructure.sh deploy
 ```
 
+### Running tests
+```bash
+# Please use virtual env of your choice, with python 3.10.18
+./scripts/test.sh
+```
+
 ## Project Structure
 
 - `app/` - application code
