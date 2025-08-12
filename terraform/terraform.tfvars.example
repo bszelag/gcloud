@@ -1,0 +1,29 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and update the values
+
+project_id = "your-gcp-project-id"
+
+region = "us-central1"
+zone = "us-central1-a"
+environment = "prod"
+
+# minimalistic setup with HA - we'll have from 3 to 6 nodes (1-2 for each zone)
+node_count = 1
+min_node_count = 1
+max_node_count = 2 
+machine_type = "e2-small" 
+
+sql_tier = "db-f1-micro"
+
+# GitHub Configuration - this would be used for cloud build, which is not implemented
+#github_owner = "bszelag
+#github_repo = "gcp-project"
+
+# GKE cluster authorized_networks
+authorized_networks = "127.0.0.1/32"  # Use my ip to secure access to the cluster
+
+node_disk_size_gb = 16
+
+billing_account = "your-billing-account-id"
+
+

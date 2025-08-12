@@ -1,0 +1,64 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: birthday-api-postgres
+    environment:
+      POSTGRES_DB: birthday_api
+      POSTGRES_USER: birthday_user
+      POSTGRES_PASSWORD: birthday_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U birthday_user -d birthday_api"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - birthday-network
+
+  # Birthday API Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: birthday-api-app
+    environment:
+      - DATABASE_URL=postgresql://birthday_user:birthday_password@postgres:5432/birthday_api
+      - TEST_DATABASE_URL=sqlite:///./test.db
+      - APP_NAME=Birthday API
+      - DEBUG=True
+      - LOG_LEVEL=INFO
+      - API_V1_STR=/api/v1
+      - PROJECT_NAME=Birthday API
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/.pytest_cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - birthday-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  birthday-network:
+    driver: bridge

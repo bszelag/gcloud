@@ -1,0 +1,17 @@
+apiVersion: v2
+name: birthday-api
+description: A Helm chart for Birthday API deployment on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/your-username/birthday-api
+sources:
+  - https://github.com/your-username/birthday-api
+maintainers:
+  - name: Beata Szelag
+    email: b.z.szelag@gmail.com
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: 55.5.0
+    repository: https://prometheus-community.github.io/helm-charts

@@ -1,0 +1,260 @@
+# Default values for birthday-api
+# This is a YAML-formatted file.
+
+# Application configuration
+app:
+  name: birthday-api
+  version: "1.0.0"
+  port: 8000
+  replicas: 2
+
+# Image configuration
+image:
+  repository: gcr.io/PROJECT_ID/birthday-api
+  tag: "latest"
+  pullPolicy: Always
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "gce"
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "birthday-api-ip"
+    networking.gke.io/managed-certificates: "birthday-api-cert"
+    networking.gke.io/v1beta1.FrontendConfig: "birthday-api-frontend-config"
+  hosts:
+    - host: birthday-api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: birthday-api-tls
+      hosts:
+        - birthday-api.example.com
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Environment variables
+env:
+  - name: APP_NAME
+    value: "Birthday API"
+  - name: DEBUG
+    value: "false"
+  - name: LOG_LEVEL
+    value: "INFO"
+  - name: API_V1_STR
+    value: "/api/v1"
+  - name: PROJECT_NAME
+    value: "Birthday API"
+
+
+# External Secrets Operator configuration
+externalSecrets:
+  enabled: true
+  
+  # SecretStore configuration
+  secretStore:
+    enabled: true
+    name: gcp-secret-store
+    type: gcpsm
+    projectID: "your-gcp-project-id"  # Will be overridden by terraform output
+    clusterLocation: ""
+    clusterName: ""
+  
+  # ExternalSecret resources
+  externalSecrets:
+    enabled: true
+    name: birthday-api-secrets
+    refreshInterval: "15s"
+    secretStoreRef:
+      name: gcp-secret-store
+      kind: ClusterSecretStore
+    target:
+      name: birthday-api-secrets
+    data:
+      - secretKey: database-password
+        remoteRef:
+          key: birthday-api-db-password
+      - secretKey: secret-key
+        remoteRef:
+          key: birthday-api-secret-key
+      - secretKey: grafana-admin-password
+        remoteRef:
+          key: birthday-api-grafana-admin-password
+  
+  # Service account configuration
+  serviceAccount:
+    enabled: true
+    name: eso-service-account
+    annotations:
+      iam.gke.io/gcp-service-account: "birthday-api-eso-sa@your-gcp-project-id.iam.gserviceaccount.com"
+
+# Secret environment variables (from External Secrets)
+secretEnv:
+  - name: DATABASE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: birthday-api-secrets
+        key: database-password
+  - name: SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: birthday-api-secrets
+        key: secret-key
+
+
+# Database configuration
+database:
+  host: "birthday-api-sql"
+  port: 5432
+  name: "birthday_api"
+  user: "birthday_user"
+  connectionName: "birthday-468702:europe-west4:birthday-api-sql"
+  cloudSqlProxy:
+    enabled: true
+  migration:
+    enabled: true
+    timeout: 300
+
+
+# Health check configuration
+healthCheck:
+  path: /health
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Readiness probe configuration
+readinessProbe:
+  path: /health
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+# Liveness probe configuration
+livenessProbe:
+  path: /health
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - birthday-api
+          topologyKey: kubernetes.io/hostname
+
+# Network policy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+
+
+# Service account
+serviceAccount:
+  create: true
+  name: "birthday-api-sa"
+  annotations:
+    iam.gke.io/gcp-service-account: "birthday-api-gke-sa@PROJECT_ID.iam.gserviceaccount.com"
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Horizontal Pod Autoscaler
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ConfigMap
+configMap:
+  enabled: true
+  data:
+    app-config.yaml: |
+      app:
+        name: Birthday API
+        version: 1.0.0
+      database:
+        pool_size: 10
+        max_overflow: 20
+      logging:
+        level: INFO
+        format: json
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+
+
+
